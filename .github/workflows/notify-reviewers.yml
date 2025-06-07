@@ -14,16 +14,15 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
-      - name: Load reviewer-discord mapping
-        id: load_map
-        run: echo "map=${{ secrets.REVIEWER_DISCORD_MAP }}" >> $GITHUB_OUTPUT
+      - name: Debug Reviewers
+        run: |
+          echo "Reviewers to notify: ${{ inputs.reviewers }}"
 
       - name: Notify Discord
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          REVIEWER_MAP: ${{ secrets.REVIEWER_DISCORD_MAP }}
         run: |
-          # Ensure map is properly quoted as JSON
-          map='${{ steps.load_map.outputs.map }}'
           reviewers="${{ inputs.reviewers }}"
           message=""
           
@@ -32,7 +31,7 @@ jobs:
             # Trim any whitespace from username
             user=$(echo "$user" | xargs)
             if [ -n "$user" ]; then
-              discord_id=$(echo "$map" | jq -r --arg user "$user" '.[$user]')
+              discord_id=$(echo "$REVIEWER_MAP" | jq -r --arg user "$user" '.[$user]')
               if [[ "$discord_id" != "null" ]]; then
                 message+="<@$discord_id> "
               fi
