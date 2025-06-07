@@ -17,6 +17,21 @@ jobs:
       - name: Debug Reviewers
         run: |
           echo "Reviewers to notify: ${{ inputs.reviewers }}"
+          
+      - name: Verify Environment
+        run: |
+          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
+            echo "Error: DISCORD_WEBHOOK_URL is not set"
+            exit 1
+          fi
+          if [ -z "$REVIEWER_MAP" ]; then
+            echo "Error: REVIEWER_MAP is not set"
+            exit 1
+          fi
+          echo "✓ All required environment variables are set"
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          REVIEWER_MAP: ${{ secrets.REVIEWER_DISCORD_MAP }}
 
       - name: Notify Discord
         env:
