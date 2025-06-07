@@ -16,25 +16,38 @@ jobs:
     steps:
       - name: Load reviewer-discord mapping
         id: load_map
-        run: echo "::set-output name=map::${{ secrets.REVIEWER_DISCORD_MAP }}"
+        run: echo "map=${{ secrets.REVIEWER_DISCORD_MAP }}" >> $GITHUB_OUTPUT
 
       - name: Notify Discord
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
+          # Ensure map is properly quoted as JSON
           map='${{ steps.load_map.outputs.map }}'
           reviewers="${{ inputs.reviewers }}"
           message=""
-
+          
+          # Split reviewers by space and process each
           for user in $reviewers; do
-            discord_id=$(echo "$map" | jq -r --arg user "$user" '.[$user]')
-            if [[ "$discord_id" != "null" ]]; then
-              message+="<@$discord_id> "
+            # Trim any whitespace from username
+            user=$(echo "$user" | xargs)
+            if [ -n "$user" ]; then
+              discord_id=$(echo "$map" | jq -r --arg user "$user" '.[$user]')
+              if [[ "$discord_id" != "null" ]]; then
+                message+="<@$discord_id> "
+              fi
             fi
           done
 
           if [[ -n "$message" ]]; then
+            # Construct and send the message
+            json_payload=$(jq -n \
+              --arg content "$message Please review the PR: ${{ inputs.pr_url }}" \
+              '{content: $content}')
+            
             curl -X POST "$DISCORD_WEBHOOK_URL" \
               -H "Content-Type: application/json" \
-              -d "$(jq -n --arg content "$message Please review the PR: ${{ inputs.pr_url }}" '{content: $content}')"
+              -d "$json_payload"
+          else
+            echo "No valid Discord IDs found for the given reviewers"
           fi
